@@ -1,0 +1,45 @@
+name: Build and Run C++ Executable
+
+on:
+  push:
+    branches: [ main, master, 'feature/*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run workflow on'
+        required: false
+        default: ''
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch || github.ref }}
+    
+    # Install system dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake g++ python3-dev
+        sed -i '/find_package(pybind11 REQUIRED)/d' src/CMakeLists.txt
+        sed -i '/set(PYBIND11_FINDPYTHON ON)/d' src/CMakeLists.txt
+        sed -i '/find_package(Python COMPONENTS Interpreter Development REQUIRED)/d' src/CMakeLists.txt
+        sed -i '/pybind11_add_module(userReporter userReporter_pybind.cpp)/d' src/CMakeLists.txt
+        sed -i '/target_link_libraries(userReporter PRIVATE userReporter_lib)/d' src/CMakeLists.txt
+    
+    # Configure CMake
+    - name: Configure CMake
+      run: cmake -S src -B build
+    
+    # Build project
+    - name: Build project
+      run: cmake --build build
+    
+    # Run the executable
+    - name: Run executable
+      run: ./build/main
